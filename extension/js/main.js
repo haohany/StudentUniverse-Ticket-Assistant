@@ -109,7 +109,7 @@ bg = chrome.extension.getBackgroundPage();
 		// clear error
 		$("#error").empty();
 
-		if (!checkAirports()) {
+		if (!checkAirports() || !checkReturnDate()) {
 			return;
 		}
 
@@ -147,19 +147,35 @@ bg = chrome.extension.getBackgroundPage();
 				$field.attr("data-code", str);
 			}
 			else {
-				var $error = $("<div/>").attr("class", "alert alert-danger alert-dismissible").attr("role", "alert");
-				$error.html('<button type="button" class="close" data-dismiss="alert">&times;</button>'
-					+ "<strong>Error!</strong> Can not recognize <em>" + str + "</em>");
-				$("#error").html($error);
+				generateError("<strong>Error!</strong> Can not recognize <em>" + str + "</em>");
 				$field.focus();
-				$("body").animate({
-					scrollTop: $error.offset().top,
-				});
 				return false;
 			}
 		}
 		return true;
 	}
 
-	function checkReturnDate() {}
+	function checkReturnDate() {
+		// no need to check return date if it's a one-way trip
+		if ($("#oneWay").is(":checked")) {
+			return true;
+		}
+		var departDate = new Date($("#departs").val());
+		var returnDate = new Date($("#returns").val());
+		if (departDate > returnDate) {
+			generateError("<strong>Error!</strong> Return date must be after depart date");
+			return false;
+		}
+		return true;
+	}
+
+	function generateError(htmlMsg) {
+		var $error = $("<div/>").attr("class", "alert alert-danger alert-dismissible").attr("role", "alert");
+		$error.html('<button type="button" class="close" data-dismiss="alert">&times;</button>'
+			+ htmlMsg);
+		$("#error").html($error);
+		$("body").animate({
+			scrollTop: $error.offset().top,
+		});
+	}
 })();
