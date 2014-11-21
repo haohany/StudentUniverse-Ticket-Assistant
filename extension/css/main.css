@@ -19,6 +19,21 @@ label {
 	margin-right: 20px;
 }
 
+.location, .dropdown-menu {
+	font-size: 90%;
+}
+
+.dropdown-menu li {
+	padding: 3px 12px;
+	color: #333;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.dropdown-menu li.active {
+	color: #fff;
+	background-color: #428bca;
+}
+
 .glyphicon-calendar.form-control-feedback {
 	right: 15px;
 	pointer-events: none;

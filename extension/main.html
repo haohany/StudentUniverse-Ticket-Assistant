@@ -13,6 +13,7 @@
 		<header class="page-header">
 			<h1>StudentUniverse Ticket Assistant<small>get the best deal for you</small></h1>
 		</header>
+		<div id="error"></div>
 		<form role="form">
 			<div class="form-group">
 				<div class="radio-inline">
@@ -29,13 +30,19 @@
 				</div>
 			</div>
 			<div class="form-group row">
-				<div class="col-xs-5">
+				<div class="col-xs-6">
 					<label>From</label>
-					<input autocomplete="off" type="text" class="form-control" id="origin" placeholder="City name or airport code" required>
+					<input autocomplete="off" type="text" class="location form-control" id="origin" placeholder="City name or airport code" required>
+					<div class="dropdown">
+						<ul class="dropdown-menu" role="menu"></ul>
+					</div>
 				</div>
-				<div class="col-xs-5">
+				<div class="col-xs-6">
 					<label>To</label>
-					<input autocomplete="off" type="text" class="form-control" id="destination" placeholder="City name or airport code" required>
+					<input autocomplete="off" type="text" class="location form-control" id="destination" placeholder="City name or airport code" required>
+					<div class="dropdown">
+						<ul class="dropdown-menu" role="menu"></ul>
+					</div>
 				</div>
 			</div>
 			<div class="form-group row">
@@ -110,13 +117,6 @@
 				<button type="button" class="btn btn-danger" id="stop" disabled>Stop</button>
 			</div>
 		</form>
-<!-- 		<div class="alert alert-success hidden" role="alert">
-			Found the deal!
-			<a class="alert-link" target="_blank">$<span class="price"></span> Check it out!</a>
-		</div>
-		<div class="alert alert-warning hidden" role="alert">
-			Oops! Some error occurred. Please check your Internet, retry it later or contact the author.
-		</div> -->
 		<table class="table table-hover"></table>
 	</div>
 	<script src="js/jquery.js"></script>

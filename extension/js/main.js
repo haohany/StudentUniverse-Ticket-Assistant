@@ -2,27 +2,10 @@ bg = chrome.extension.getBackgroundPage();
 
 (function() {
 
-	initializeDatePicker();
+	// array to store info of cities and airports
+	var locations = [];
 
-	$("form").submit(submitHandler);
-
-
-	function initializeDatePicker() {
-		$(".date").datepicker({
-			autoclose: true,
-			orientation: "top auto",
-			startDate: "0d"
-		});
-
-		$(".date").datepicker("update", new Date().toDateString());
-
-		$("#departs").datepicker().on("changeDate", function(e) {
-			if (e.date.getTime() > $("#returns").datepicker("getDate").getTime()) {
-				$("#returns").datepicker("setDate", e.date);
-			}
-		});
-	}
-
+	// encapsulate operations on result table
 	var resultTable = {
 		$table: $("table"),
 
@@ -66,8 +49,220 @@ bg = chrome.extension.getBackgroundPage();
 		}
 	};
 
+	getLocations();
+
+	$(".location").keydown(keyDownHandler);
+	$(".location").keyup(keyUpHandler);
+	$("html").mouseup(clearLocationDropdownMenu);
+
+	initializeDatePicker();
+
+	$("form").submit(submitHandler);
+
+	///////////////////////////////////////
+	// function implementation
+
+	function getLocations() {
+		$.ajax({
+			url: "http://www.studentuniverse.com/grails/geolocation/getLocations",
+			async: false,
+			dataType: "text", // prevent jQuery from converting the data
+			success: function(data, textStatus, jqXHR) {
+				if (jqXHR.status !== 200) {
+					errorHandler(jqXHR.status + " " + jqXHR.statusText);
+					return;
+				}
+				var items = JSON.parse(data);
+				items.forEach(function(item) {
+					if (item.displayName && item.code) {
+						locations.push(item);
+					}
+				});
+			},
+			error: function(jqXHR) {
+				errorHandler(jqXHR.status + " " + jqXHR.statusText);
+			},
+		});
+
+		function errorHandler(msg) {
+			var $error = $("<div/>").attr("class", "alert alert-danger").attr("role", "alert");
+			$error.html("Failed to fetch airports info from server: "
+				+ "<strong>" + msg + "</strong>"
+				+". Please try it later.");
+			$("#error").html($error);
+			$("form, table").hide();
+		}
+	}
+
+	// function blurHandler(e) {
+	// 	var $menu = $(this).parent().find(".dropdown-menu");
+	// 	$menu.hide().empty();
+	// }
+
+	function keyDownHandler(e) {
+		var $menu = $(this).parent().find(".dropdown-menu");
+		// keep default behavior if no menu
+		if (!$menu.html()) {
+			return;
+		}
+		// tab or enter pressed
+		if (e.which === 9 || e.which === 13) {
+			e.preventDefault();
+		}
+		// up arrow
+		else if (e.which === 38) {
+			var $curr = $menu.find(".active");
+			$curr.removeClass("active");
+			var $prev = $curr.prev();
+			if ($prev.length === 0) {
+				$prev = $menu.children().last();
+			}
+			$prev.addClass("active");
+		}
+		// down arrow
+		else if (e.which === 40) {
+			var $curr = $menu.find(".active");
+			$curr.removeClass("active");
+			var $next = $curr.next();
+			if ($next.length === 0) {
+				$next = $menu.children().first();
+			}
+			$next.addClass("active");
+		}
+	}
+
+	function keyUpHandler(e) {
+		// tab or enter pressed
+		if (e.which === 9 || e.which === 13) {
+			var $menu = $(this).parent().find(".dropdown-menu");
+			if ($menu.html()) {
+				this.value = $menu.find(".active").text();
+				$menu.hide().empty();
+				focusNextInputField(this);
+				// e.preventDefault();
+			}
+		}
+		else {
+			generateLocationList.bind(this, e)();
+		}
+
+		function focusNextInputField(currInput) {
+			var $inputs = $("input");
+			var index = $inputs.index(currInput);
+			if (index > -1 && index + 1 < $inputs.length ) {
+				$inputs.eq(index + 1).focus();
+			}
+		}
+	}
+
+	function clearLocationDropdownMenu(e) {
+		// get all location menu that have menu items
+		var $menu = $(".location").parent().find(".dropdown-menu:parent");
+		$menu.each(function(){
+			var dropdown = this.parentNode;
+			if (dropdown === $(e.target).siblings(".dropdown")[0]
+				|| dropdown === $(e.target).parents(".dropdown")[0]) {
+				return;
+			}
+			$(this).hide().empty();
+		});
+	}
+
+	var generateLocationList = function() {
+		var prevStr = "";
+
+		function escapeRegExp(string) {
+			return string.replace(/([.*+?^${}()|\[\]\/\\])/g, "\\$1");
+		}
+
+		// for dropdown menu items
+		function mouseEnterHandler(e) {
+			$(this).siblings(".active").removeClass("active");
+			$(this).addClass("active");
+		}
+
+		// for dropdown menu items
+		function clickHandler(e) {
+			var $input = $(this).parents(".dropdown").siblings(".location");
+			$input.val(this.textContent);
+			$input.focus();
+			var $menu = $(this).parent();
+			$menu.hide().empty();
+		}
+
+		return function(e) {
+			var str = this.value;
+			// if the string didn't change, do nothing
+			if (str === prevStr) {
+				return;
+			}
+			prevStr = str;
+			// clear current list if it exists
+			var $menu = $(this).parent().find(".dropdown-menu");
+			$menu.hide().empty();
+
+			str = str.trim();
+			// don't give prompts when there are less than 3 characters
+			if (str.length < 3) {
+				return;
+			}
+
+			locations.forEach(function(loc) {
+				if (new RegExp(escapeRegExp(str), "i").test(loc.displayName)) {
+					var item = loc.displayName.replace(new RegExp("(" + escapeRegExp(str) + ")", "gi"), "<strong>$1</strong>");
+					var $li = $("<li/>").html(item);
+					str.toUpperCase() === loc.code ? $menu.prepend($li) : $menu.append($li);
+				}
+				else {
+					var tokens = str.split(/\s+/);
+					var contained = true;
+					for (var i = 0; i < tokens.length; i++) {
+						if (!new RegExp(escapeRegExp(tokens[i]), "i").test(loc.displayName)) {
+							contained = false;
+							break;
+						}
+					}
+					if (contained) {
+						var $li = $("<li/>").html(loc.displayName);
+						$menu.append($li);
+					}
+				}
+			});
+
+			if ($menu.html()) {
+				$menu.children().first().addClass("active");
+				$menu.children().mouseenter(mouseEnterHandler);
+				$menu.children().click(clickHandler);
+				$menu.show();
+			}
+		};
+	}();
+
+	function initializeDatePicker() {
+		$(".date").datepicker({
+			autoclose: true,
+			orientation: "top auto",
+			startDate: "0d"
+		});
+
+		$(".date").datepicker("update", new Date().toDateString());
+
+		$("#departs").datepicker().on("changeDate", function(e) {
+			if (e.date.getTime() > $("#returns").datepicker("getDate").getTime()) {
+				$("#returns").datepicker("setDate", e.date);
+			}
+		});
+	}
+
 	function submitHandler(e) {
 		e.preventDefault();
+
+		// clear error
+		$("#error").empty();
+
+		if (!checkAirports()) {
+			return;
+		}
 
 		resultTable.reset();
 
@@ -83,6 +278,38 @@ bg = chrome.extension.getBackgroundPage();
 			$("form").find("input, select, button").prop("disabled", false);
 			$("#stop").prop("disabled", true);
 		});
+	}
+
+	function checkAirports() {
+		var $inputs = $("input:not([disabled]).location");
+		for (var i = 0; i < $inputs.length; i++) {
+			var $field = $inputs.eq(i);
+			var str = $field.val().trim().toLowerCase();
+			var valid = false;
+			for (var j = 0; j < locations.length; j++) {
+				var loc = locations[j];
+				if (str === loc.displayName.toLowerCase() || str === loc.code.toLowerCase()) {
+					str = loc.code;
+					valid = true;
+					break;
+				}
+			}
+			if (valid) {
+				$field.attr("data-code", str);
+			}
+			else {
+				var $error = $("<div/>").attr("class", "alert alert-danger alert-dismissible").attr("role", "alert");
+				$error.html('<button type="button" class="close" data-dismiss="alert">&times;</button>'
+					+ "<strong>Error!</strong> Can not recognize <em>" + str + "</em>");
+				$("#error").html($error);
+				$field.focus();
+				$("body").animate({
+					scrollTop: $error.offset().top,
+				});
+				return false;
+			}
+		}
+		return true;
 	}
 
 	function buildQueries() {
@@ -102,8 +329,8 @@ bg = chrome.extension.getBackgroundPage();
 		};
 
 		commonData.tripType = Number($(".tripType:checked").val());
-		commonData.origin = $("#origin").val();
-		commonData.destination = $("#destination").val();
+		commonData.origin = $("#origin").attr("data-code");
+		commonData.destination = $("#destination").attr("data-code");
 		commonData.departs = $("#departs").val();
 		commonData.numTravelers = $("#numTravelers").val();
 
