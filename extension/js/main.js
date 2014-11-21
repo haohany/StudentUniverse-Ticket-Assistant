@@ -4,19 +4,37 @@ bg = chrome.extension.getBackgroundPage();
 
 	// array to store info of cities and airports
 	var locations = [];
-
 	loadLocations(locations);
+
+	initializeDatePicker();
+
+	$(".tripType").change(function(e) {
+		tripTypeChangeHandler(e); // cause it's a function variable
+	});
 
 	$(".location").keydown(keyDownHandler);
 	$(".location").keyup(keyUpHandler);
 	$("html").mouseup(clearLocationDropdownMenu);
 
-	initializeDatePicker();
-
 	$("form").submit(submitHandler);
 
 	///////////////////////////////////////
 	// function implementation
+
+	var tripTypeChangeHandler = function() {
+		var $fields = $("#returnRow").find("[required]");
+
+		return function(e) {
+			if ($("#oneWay").is(":checked")) {
+				$("#returnRow").hide();
+				$fields.prop("required", false);
+			}
+			else {
+				$("#returnRow").show();
+				$fields.prop("required", true);
+			}
+		};
+	}();
 
 	function keyDownHandler(e) {
 		var $menu = $(this).parent().find(".dropdown-menu");
@@ -84,22 +102,6 @@ bg = chrome.extension.getBackgroundPage();
 				return;
 			}
 			$(this).hide().empty();
-		});
-	}
-
-	function initializeDatePicker() {
-		$(".date").datepicker({
-			autoclose: true,
-			orientation: "top auto",
-			startDate: "0d"
-		});
-
-		$(".date").datepicker("update", new Date().toDateString());
-
-		$("#departs").datepicker().on("changeDate", function(e) {
-			if (e.date.getTime() > $("#returns").datepicker("getDate").getTime()) {
-				$("#returns").datepicker("setDate", e.date);
-			}
 		});
 	}
 

@@ -101,3 +101,22 @@ var generateLocationList = function() {
 		}
 	};
 }();
+
+function initializeDatePicker() {
+	$(".date").datepicker({
+		autoclose: true,
+		orientation: "top auto",
+		startDate: "0d"
+	});
+
+	var initialDate = new Date();
+	initialDate.setDate(initialDate.getDate() + 1);
+	$(".date").datepicker("update", new Date(initialDate.toDateString()));
+
+	$("#departs").datepicker().on("changeDate", function(e) {
+		if (e.date.getTime() > $("#returns").datepicker("getDate").getTime()) {
+			$("#returns").datepicker("setDate", e.date);
+		}
+	});
+}
+
